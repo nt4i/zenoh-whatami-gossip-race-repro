@@ -8,7 +8,7 @@ This is a deterministic regression test of the actual router link-state code. A 
 
 ## Requirements
 
-- Windows PowerShell 5.1 or PowerShell 7
+- Bash (Git Bash on Windows, or Bash on Linux/macOS)
 - Git
 - Rust and Cargo; the default run uses Rust 1.97.1 (`rustup toolchain install 1.97.1` if needed)
 - Network access to clone Zenoh and download Cargo dependencies
@@ -19,14 +19,14 @@ The tested source commit is `173b1220c2ab59cc22c82bfc6c95ac9971ff213b`, the base
 
 From a clone of this repository, run:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\run.ps1
+```bash
+bash ./run.sh
 ```
 
-If Rust 1.97.1 is not installed but another compatible toolchain is available, pass its name:
+If Rust 1.97.1 is not installed but another compatible toolchain is available, select it with `TOOLCHAIN`:
 
-```powershell
-powershell -ExecutionPolicy Bypass -File .\run.ps1 -Toolchain stable
+```bash
+TOOLCHAIN=stable bash ./run.sh
 ```
 
 The script creates a fresh Zenoh clone under `.work/`, expects the baseline test to fail with `left: None` / `right: Some(Router)`, applies the PR fix, and requires the same test to pass. It keeps both logs in the generated run directory.
