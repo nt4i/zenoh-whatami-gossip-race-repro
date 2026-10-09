@@ -1,0 +1,12 @@
+diff --git a/zenoh/src/net/protocol/network.rs b/zenoh/src/net/protocol/network.rs
+index 80204f0e83..09b8595130 100644
+--- a/zenoh/src/net/protocol/network.rs
++++ b/zenoh/src/net/protocol/network.rs
+@@ -725,6 +725,7 @@ impl Network {
+                     let oldsn = node.sn;
+                     if oldsn < ls.sn {
+                         node.sn = ls.sn;
++                        node.whatami = Some(ls.whatami);
+                         node.links.clone_from(&ls.links);
+                         if ls.locators.is_some() {
+                             node.locators = ls.locators;

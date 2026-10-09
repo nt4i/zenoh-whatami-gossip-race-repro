@@ -1,0 +1,87 @@
+diff --git a/zenoh/src/net/protocol/network.rs b/zenoh/src/net/protocol/network.rs
+index 80204f0e..447e859a 100644
+--- a/zenoh/src/net/protocol/network.rs
++++ b/zenoh/src/net/protocol/network.rs
+@@ -1395,4 +1395,82 @@ mod tests {
+             "b1's links info in a's graph should be non-empty"
+         );
+     }
++
++    #[test]
++    fn test_reintroduced_node_role_is_filled_by_its_own_linkstate() {
++        use zenoh_transport::unicast::test_helpers::mock_transport_unicast;
++
++        let c_zid = "c".parse::<ZenohIdProto>().unwrap();
++        let a_zid = "a".parse::<ZenohIdProto>().unwrap();
++        let b_zid = "b0".parse::<ZenohIdProto>().unwrap();
++
++        let mut net = Network::new(
++            "[Test]".to_string(),
++            c_zid,
++            minimal_runtime(),
++            /* full_linkstate */ true,
++            /* gossip */ true,
++            /* gossip_multihop */ true,
++            WhatAmIMatcher::empty(),
++            AutoConnect::disabled(),
++            HashMap::new(),
++            Bound::South,
++        );
++
++        let (transport, transport_guard) =
++            mock_transport_unicast(a_zid, WhatAmI::Router, Arc::new(|_| {}));
++        mem::forget(transport_guard);
++        net.add_link(transport);
++
++        // Learn B's PSID mapping, then let B's detached graph node be removed.
++        net.link_states(
++            vec![LinkState {
++                psid: 1,
++                sn: 1,
++                zid: Some(b_zid),
++                whatami: Some(WhatAmI::Router),
++                locators: None,
++                links: vec![],
++                link_weights: None,
++                is_gateway: false,
++            }],
++            a_zid,
++        );
++
++        // A's links map introduces B indirectly, creating a role-less placeholder.
++        net.link_states(
++            vec![LinkState {
++                psid: 0,
++                sn: 1,
++                zid: Some(a_zid),
++                whatami: None,
++                locators: None,
++                links: vec![1],
++                link_weights: None,
++                is_gateway: false,
++            }],
++            a_zid,
++        );
++        let b_idx = net.get_idx(&b_zid).expect("A's links should reintroduce B");
++        assert_eq!(net.graph[b_idx].whatami, None);
++        assert_eq!(net.graph[b_idx].sn, 0);
++
++        // B's own newer announcement updates the existing placeholder.
++        net.link_states(
++            vec![LinkState {
++                psid: 1,
++                sn: 2,
++                zid: Some(b_zid),
++                whatami: Some(WhatAmI::Router),
++                locators: None,
++                links: vec![0],
++                link_weights: None,
++                is_gateway: false,
++            }],
++            a_zid,
++        );
++
++        let b_idx = net.get_idx(&b_zid).expect("B should remain in the graph");
++        assert_eq!(net.graph[b_idx].whatami, Some(WhatAmI::Router));
++    }
+ }
