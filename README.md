@@ -50,7 +50,3 @@ test result: ok. 1 passed; 0 failed
 ```
 
 The regression test asserts the intermediate placeholder state (`whatami: None`, `sn: 0`) before delivering B's own newer link state, then asserts the final role is `Some(Router)`. On the base commit, only that final assertion fails. The patch adds the same assignment proposed in PR #2827: `node.whatami = Some(ls.whatami);`.
-
-## Pull request reply
-
-> I added a deterministic reproducer at [nt4i/zenoh-whatami-gossip-race-repro](https://github.com/nt4i/zenoh-whatami-gossip-race-repro). It applies a test-only patch to the PR base commit and feeds `link_states()` the sequence that creates a reintroduced placeholder for B (`whatami: None`, `sn: 0`) before B's newer self-announcement arrives. The test fails on the unmodified base because B remains `None`, then passes with the one-line `node.whatami = Some(ls.whatami)` fix. I also tried the simple three-`zenohd` A-C-first topology; it did not reproduce in 10/10 runs, so I am not presenting that timing-sensitive setup as evidence.
