@@ -8,12 +8,9 @@ This is a deterministic regression test of the actual router link-state code. A 
 
 ## Requirements
 
-- Bash (Git Bash on Windows, or Bash on Linux/macOS)
+- Bash
 - Git
-- Rust and Cargo; the default run uses Rust 1.97.1 (`rustup toolchain install 1.97.1` if needed)
-- Network access to clone Zenoh and download Cargo dependencies
-
-The tested source commit is `173b1220c2ab59cc22c82bfc6c95ac9971ff213b`, the base of PR #2827. Docker is not required.
+- Rust and Cargo; the default run uses Rust 1.97.1
 
 ## Run
 
