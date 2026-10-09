@@ -1,16 +1,17 @@
 # Zenoh `whatami` link-state regression reproducer
 
-This repository demonstrates the missing role assignment fixed by [eclipse-zenoh/zenoh#2827](https://github.com/eclipse-zenoh/zenoh/pull/2827).
+This repository demonstrates the missing role assignment fixed by [eclipse-zenoh/zenoh#2827](https://github.com/eclipse-zenoh/zenoh/pull/2827) with both real `zenohd` processes and a deterministic regression test of `Network::link_states()`.
 
-The reproducer applies a small test-only patch to the exact Zenoh base commit, then feeds `Network::link_states()` the triggering sequence directly. The sequence first registers B's per-link ID mapping, then processes A's link state with B only in A's `links` map. That creates B as a placeholder (`whatami: None`, `sn: 0`). B's newer self-announcement then updates that existing node. On the unmodified base, the final role remains `None`; with the PR's one-line assignment, it becomes `Some(Router)`.
+The process reproducer launches three router daemons. A starts first, B connects to A, and then C connects to A. C receives A's initial full link-state list with A's entry first and B's entry second. A's `links` map mentions B, so C creates B as a placeholder (`whatami: None`, `sn: 0`) before it processes B's own newer state. On the base commit, C's node role remains unset and its autoconnect check skips B. After the PR's one-line assignment, C learns B's role and establishes a direct C-B transport.
 
-This is a deterministic regression test of the actual router link-state code. A three-`zenohd` process experiment using the simple A-C-first, then B-to-A topology did **not** reproduce the issue in 10/10 runs on the base commit: A sends B's role-bearing state before its own links update in the same list, and C autoconnects B. The Admin Space link-state endpoint exposes the graph but does not expose the node's internal `whatami` field. For those reasons, this repository does not present that process topology or its REST graph as evidence of the bug.
+Only C has router autoconnect enabled in this topology. B's autoconnect is disabled so B cannot initiate C-B itself and mask the missing attempt from C. The trial waits for the A-B session before starting C, then verifies the graph and direct transport through the Admin Space REST API. REST does not expose the internal `whatami` field, so the test combines the REST transport observation with C's `Add node (reintroduced)` trace; the in-memory regression test separately asserts the exact `None` to `Some(Router)` state.
 
 ## Requirements
 
 - Bash
 - Git
 - Rust and Cargo; the default run uses Rust 1.97.1
+- Python 3 (to inspect the Admin Space REST JSON)
 
 ## Run
 
@@ -26,11 +27,27 @@ If Rust 1.97.1 is not installed but another compatible toolchain is available, s
 TOOLCHAIN=stable bash ./run.sh
 ```
 
-The script creates a fresh Zenoh clone under `.work/`, expects the baseline test to fail with `left: None` / `right: Some(Router)`, applies the PR fix, and requires the same test to pass. It keeps both logs in the generated run directory.
+The script creates a fresh Zenoh clone under `.work/`, builds and runs the unmodified base, then applies the PR fix and repeats. It requires the internal regression test to fail before and pass after the fix, and runs the three-daemon topology five times for each build. The process trials save each daemon's trace and C's Admin Space snapshot in the generated run directory.
 
 ## Expected result
 
-Before the fix:
+Before the fix, each process trial reports:
+
+```text
+before trial 1: graph_has_B=yes direct_C_B=no
+```
+
+C's log includes `Add node (reintroduced) <B-ZID>`. The snapshot is saved as `process-before-1/C-adminspace.json`.
+
+After applying the fix, each process trial reports:
+
+```text
+after trial 11: graph_has_B=yes direct_C_B=yes
+```
+
+The direct C-B transport is visible under `@/<C-ZID>/session/transport/unicast/<B-ZID>` in the saved Admin Space snapshot.
+
+The in-memory regression test also reports the exact field comparison. Before the fix:
 
 ```text
 assertion `left == right` failed

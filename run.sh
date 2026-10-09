@@ -42,6 +42,38 @@ if ! grep -Fq 'left: None' "$BEFORE_LOG" || ! grep -Fq 'right: Some(Router)' "$B
 fi
 echo "Confirmed: baseline leaves whatami as None. Log: $BEFORE_LOG"
 
+build_daemon() {
+    (cd "$ZENOH_DIR" && cargo "+$TOOLCHAIN" build --release -p zenohd -p zenoh-plugin-rest)
+}
+
+find_artifacts() {
+    ZENOH_BIN="$ZENOH_DIR/target/release/zenohd"
+    REST_PLUGIN=""
+    for candidate in \
+        "$ZENOH_DIR/target/release/zenohd.exe" \
+        "$ZENOH_DIR/target/release/zenoh_plugin_rest.dll" \
+        "$ZENOH_DIR/target/release/libzenoh_plugin_rest.so" \
+        "$ZENOH_DIR/target/release/libzenoh_plugin_rest.dylib"; do
+        if [[ -f "$candidate" ]]; then
+            if [[ "$candidate" == *zenohd.exe ]]; then ZENOH_BIN="$candidate"; fi
+            if [[ "$candidate" == *zenoh_plugin_rest.dll || "$candidate" == *libzenoh_plugin_rest.so || "$candidate" == *libzenoh_plugin_rest.dylib ]]; then
+                REST_PLUGIN="$candidate"
+            fi
+        fi
+    done
+    if [[ ! -f "$ZENOH_BIN" || ! -f "$REST_PLUGIN" ]]; then
+        echo "Could not find the built zenohd binary or REST plugin." >&2
+        exit 1
+    fi
+}
+
+echo "Building unmodified zenohd and REST plugin ..."
+build_daemon
+find_artifacts
+for trial in 1 2 3 4 5; do
+    bash "$SCRIPT_DIR/process-repro.sh" before "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$trial"
+done
+
 echo "Applying the one-line PR fix and rerunning ..."
 git -C "$ZENOH_DIR" apply "$SCRIPT_DIR/whatami-fix.patch"
 (cd "$ZENOH_DIR" && cargo "${TEST_ARGS[@]}" >"$AFTER_LOG" 2>&1) || {
@@ -51,3 +83,11 @@ git -C "$ZENOH_DIR" apply "$SCRIPT_DIR/whatami-fix.patch"
 }
 cat "$AFTER_LOG"
 echo "Confirmed: fixed source stores Some(Router). Logs are in $RUN_DIR"
+
+echo "Building fixed zenohd and REST plugin ..."
+build_daemon
+find_artifacts
+for trial in 1 2 3 4 5; do
+    bash "$SCRIPT_DIR/process-repro.sh" after "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$((trial + 10))"
+done
+echo "Both process variants passed. Before/after logs and Admin Space snapshots are in $RUN_DIR"
