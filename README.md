@@ -42,9 +42,12 @@ The script builds Zenoh at the base commit and with the PR #2827 role-assignment
 
 ## Expected result
 
-| Build | Regression test | Process result |
-| --- | --- | --- |
-| Base commit | Fails: `whatami` remains `None` instead of `Some(Router)` | May be `direct_C_B=no` or `yes`, depending on which router is allowed to initiate; the script looks for a `no` trial |
-| With PR #2827 change | Passes | `direct_C_B=yes` |
+The [regression test](regression-test.patch#L11) reads `net.graph[b_idx].whatami` directly. It asserts that A's link map creates B as a placeholder (`None`, `sn: 0`), then that B's own announcement sets `Some(Router)`. The base build fails the final assertion; the build with PR #2827 passes.
 
-The regression test reads `net.graph[b_idx].whatami` directly: it checks the placeholder (`None`, `sn: 0`) and then checks the value after B's own announcement. The process trial saves C's link-state and B–C transport Admin Space responses for inspection.
+| Process output | What it checks | Where it comes from |
+| --- | --- | --- |
+| `graph_has_B=yes` | C's Admin Space link-state graph contains B | [`process-repro.sh`](process-repro.sh#L159) |
+| `placeholder_at_C=yes` | C logged creation of B as a reintroduced node | [`process-repro.sh`](process-repro.sh#L178) |
+| `direct_C_B=no` / `yes` | Whether C has a direct B transport, queried through Admin Space | [`process-repro.sh`](process-repro.sh#L173) |
+
+The process check does not expose B's internal `whatami`; that value is checked by the regression test above. On the base build, [`run.sh`](run.sh#L87) tries up to ten times to find a `direct_C_B=no` case. If B has the greater ID, its connection attempt can mask C's bug. With PR #2827, all five process trials must report `direct_C_B=yes`. Each trial's `result.txt`, `C.log`, and Admin Space snapshots are saved under `.work/`.
