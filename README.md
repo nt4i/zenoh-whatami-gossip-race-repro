@@ -15,7 +15,7 @@ sequenceDiagram
     C->>A: Connect
     A-->>B: C's role-bearing state, then A's updated link state
     A-->>C: A's link state (which lists B), then B's own state
-    C->>C: Create B placeholder (whatami=None, sn=0)
+    C->>C: Reintroduce B from A's link map (whatami=None, sn=0)
     C->>C: Process B's newer self-announcement
     alt Base commit, C has the greater ID
         C->>C: whatami stays None, so C skips B
@@ -47,16 +47,16 @@ The [regression test](regression-test.patch#L11) feeds these four events to `Net
 | Step | Event | Before PR #2827 | With PR #2827 |
 | --- | --- | --- | --- |
 | 1 | Learn B's per-link ID mapping from A | Mapping is stored; B's detached graph node is removed | Same |
-| 2 | A announces a link to B | C creates B's placeholder: `whatami=None`, `sn=0` | Same |
+| 2 | A announces a link to B | C re-adds B with no role: `whatami=None`, `sn=0` | Same |
 | 3 | B announces itself with `sn=2`, `whatami=Router` | Existing B gets `sn=2` and its link to A, but `whatami` stays `None` | Existing B also gets `whatami=Some(Router)` |
 | 4 | Test checks B's role | Fails: expected `Some(Router)`, got `None` | Passes: role is `Some(Router)` |
 
-The test reads `net.graph[b_idx].whatami` directly. The real-process checks are separate: they inspect C's graph, placeholder log, and direct B–C transport as listed below.
+The test reads `net.graph[b_idx].whatami` directly. The real-process checks are separate: they inspect C's graph, reintroduction log, and direct B–C transport as listed below.
 
 | Process output | What it checks | Where it comes from |
 | --- | --- | --- |
 | `graph_has_B=yes` | C's Admin Space link-state graph contains B | [`process-repro.sh`](process-repro.sh#L159) |
-| `placeholder_at_C=yes` | C logged creation of B as a reintroduced node | [`process-repro.sh`](process-repro.sh#L178) |
+| `B_reintroduced_at_C=yes` | C logged B's reintroduction from A's link map | [`process-repro.sh`](process-repro.sh#L178) |
 | `direct_C_B=no` / `yes` | Whether C has a direct B transport, queried through Admin Space | [`process-repro.sh`](process-repro.sh#L173) |
 
 The process check does not expose B's internal `whatami`; that value is checked by the regression test above. On the base build, [`run.sh`](run.sh#L87) tries up to ten times to find a `direct_C_B=no` case. If B has the greater ID, its connection attempt can mask C's bug. With PR #2827, all five process trials must report `direct_C_B=yes`. Each trial's `result.txt`, `C.log`, and Admin Space snapshots are saved under `.work/`.
