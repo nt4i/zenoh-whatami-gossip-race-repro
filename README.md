@@ -15,7 +15,7 @@ sequenceDiagram
     C->>A: Connect
     A-->>B: C's role-bearing state, then A's updated link state
     A-->>C: A's link state (which lists B), then B's own state
-    C->>C: Reintroduce B from A's link map (whatami=None, sn=0)
+    C->>C: A's links add B to C's graph (whatami=None, sn=0)
     C->>C: Process B's newer self-announcement
     alt Base commit, C has the greater ID
         C->>C: whatami stays None, so C skips B
@@ -64,7 +64,7 @@ The process check below separately checks whether C establishes a direct B–C t
 [`process-repro.sh`](process-repro.sh#L149) starts A, connects B to A, then connects C to A; it waits for both A–B and A–C transports before checking the result. It then:
 
 1. Checks C's Admin Space link-state graph for B: `graph_has_B=yes` ([check](process-repro.sh#L159)).
-2. Checks C's log for B's reintroduction from A's link map: `B_reintroduced_at_C=yes` ([check](process-repro.sh#L178)).
+2. Checks C's log to confirm A's link map caused C to add B: `B_added_from_A_links_at_C=yes` ([check](process-repro.sh#L178)).
 3. Queries C's Admin Space for a direct B–C transport: `direct_C_B=no` or `yes` ([query](process-repro.sh#L173)).
 
-A baseline reproduction is `graph_has_B=yes B_reintroduced_at_C=yes direct_C_B=no`. `run.sh` tries up to ten baseline trials because B's autoconnect can establish B–C first and mask C's skipped attempt. With PR #2827, all five trials must report `direct_C_B=yes`. These process checks do not expose `whatami`; the regression test above reads that field directly. Each trial saves its result, logs, and Admin Space snapshots under `.work/` ([snapshots](process-repro.sh#L170), [result](process-repro.sh#L188)).
+A baseline reproduction is `graph_has_B=yes B_added_from_A_links_at_C=yes direct_C_B=no`. `run.sh` tries up to ten baseline trials because B's autoconnect can establish B–C first and mask C's skipped attempt. With PR #2827, all five trials must report `direct_C_B=yes`. These process checks do not expose `whatami`; the regression test above reads that field directly. Each trial saves its result, logs, and Admin Space snapshots under `.work/` ([snapshots](process-repro.sh#L170), [result](process-repro.sh#L188)).
