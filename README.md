@@ -1,8 +1,8 @@
 # Zenoh `whatami` regression reproducer
 
-This reproduces the missing node-role assignment addressed by the role-assignment change in [zenoh#2827](https://github.com/eclipse-zenoh/zenoh/pull/2827).
+This reproduces the missing node-role assignment addressed by [zenoh#2827](https://github.com/eclipse-zenoh/zenoh/pull/2827), using three real `zenohd` processes.
 
-Three real `zenohd` processes create the triggering order: A starts, B connects to A, then C connects to A. C learns about B from A's link map before receiving B's own link state. Without the PR #2827 change, C leaves B's `whatami` unset and does not autoconnect; with the role-assignment change, C learns B's role and establishes a direct connection.
+All three routers have gossip autoconnect enabled for routers and use `autoconnect_strategy: "greater-zid"`. B and C connect only to A through their configured `connect` endpoint; there is no configured B–C connection. `greater-zid` allows only the router with the greater Zenoh ID to initiate the automatic connection.
 
 ```mermaid
 sequenceDiagram
@@ -11,20 +11,24 @@ sequenceDiagram
     participant C as Router C
 
     B->>A: Connect
-    Note over A,B: A-B session is established
+    Note over A,B: A–B session established
     C->>A: Connect
-    A-->>C: Initial link-state list [A, B]
-    Note right of C: Process A first, A.links contains B
+    A-->>B: C's role-bearing state, then A's updated link state
+    A-->>C: A's link state (which lists B), then B's own state
     C->>C: Create B placeholder (whatami=None, sn=0)
-    Note right of C: Then process B's entry from A's list (its self-announcement)
-    alt Base commit
-        C->>C: Existing-node update leaves whatami unset
-        Note right of C: Autoconnect skips B
+    C->>C: Process B's newer self-announcement
+    alt Base commit, C has the greater ID
+        C->>C: whatami stays None; C skips B
+        Note over B,C: B is not allowed to initiate; no direct B–C transport
+    else Base commit, B has the greater ID
+        B->>C: Autoconnect succeeds and masks C's skipped attempt
     else With PR #2827 change
-        C->>C: Assign B.whatami = Router
-        C->>B: Autoconnect (direct C-B)
+        C->>C: Existing-node update assigns B.whatami = Router
+        Note over B,C: The greater-ID router can now initiate the connection
     end
 ```
+
+The process result depends on the randomly generated router IDs. On the base commit, the trial reproduces the missing B–C connection when C is the only router allowed to initiate. If B is allowed to initiate, its connection can mask C's `whatami` bug. The PR change makes the role available to C as well.
 
 ## Run
 
@@ -34,13 +38,13 @@ Requires Bash and Rust/Cargo 1.97.1 (pinned by Zenoh).
 bash ./run.sh
 ```
 
-The script builds the base Zenoh commit and a second build with PR #2827's role-assignment change applied, then runs the regression test and up to five process trials for each. Logs and Admin Space snapshots are saved under `.work/`.
+The script builds Zenoh at the base commit and with the PR #2827 role-assignment change, runs the regression test, and runs up to ten base process trials to find the no-connection case. It then runs five process trials with the PR change. Logs and Admin Space snapshots are saved under `.work/`.
 
 ## Expected result
 
-| Version | Process result | Regression test |
+| Build | Regression test | Process result |
 | --- | --- | --- |
-| Base commit | `graph_has_B=yes direct_C_B=no` | Fails: role is `None` instead of `Some(Router)` |
-| With PR #2827 change | `graph_has_B=yes direct_C_B=yes` | Passes |
+| Base commit | Fails: `whatami` remains `None` instead of `Some(Router)` | May be `direct_C_B=no` or `yes`, depending on which router is allowed to initiate; the script looks for a `no` trial |
+| With PR #2827 change | Passes | `direct_C_B=yes` |
 
-The Admin Space snapshot shows the direct C–B transport with the PR #2827 change applied, but it does not expose the internal `whatami` field. The regression test reads `net.graph[b_idx].whatami` directly: it checks `None` with `sn: 0` after placeholder creation, then `Some(Router)` after B's own announcement. B's autoconnect is disabled so it cannot mask C's skipped connection attempt.
+The regression test reads `net.graph[b_idx].whatami` directly: it checks the placeholder (`None`, `sn: 0`) and then checks the value after B's own announcement. The process trial saves C's link-state and B–C transport Admin Space responses for inspection.

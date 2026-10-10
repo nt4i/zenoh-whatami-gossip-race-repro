@@ -33,7 +33,12 @@ cat >"$TRIAL_DIR/A.json5" <<EOF
   connect: { endpoints: [] },
   scouting: {
     multicast: { enabled: false },
-    gossip: { enabled: true, multihop: true, autoconnect: { router: [] } }
+    gossip: {
+      enabled: true,
+      multihop: true,
+      autoconnect: { router: ["router"] },
+      autoconnect_strategy: "greater-zid"
+    }
   },
   adminspace: { enabled: true, permissions: { read: true, write: false } }
 }
@@ -45,7 +50,12 @@ cat >"$TRIAL_DIR/B.json5" <<EOF
   connect: { endpoints: ["${A_LOCATOR}"] },
   scouting: {
     multicast: { enabled: false },
-    gossip: { enabled: true, multihop: true, autoconnect: { router: [] } }
+    gossip: {
+      enabled: true,
+      multihop: true,
+      autoconnect: { router: ["router"] },
+      autoconnect_strategy: "greater-zid"
+    }
   },
   adminspace: { enabled: true, permissions: { read: true, write: false } }
 }
@@ -57,18 +67,23 @@ cat >"$TRIAL_DIR/C.json5" <<EOF
   connect: { endpoints: ["${A_LOCATOR}"] },
   scouting: {
     multicast: { enabled: false },
-    gossip: { enabled: true, multihop: true, autoconnect: { router: ["router"] } }
+    gossip: {
+      enabled: true,
+      multihop: true,
+      autoconnect: { router: ["router"] },
+      autoconnect_strategy: "greater-zid"
+    }
   },
   adminspace: { enabled: true, permissions: { read: true, write: false } }
 }
 EOF
 
 admin_value() {
-    local port="$1" operation="$2" locator="$3" owner="$4" peer="$5"
-    local endpoint="http://localhost:${port}/@/**"
+    local port="$1" path="$2" operation="$3" owner="$4" peer="$5"
+    local endpoint="http://localhost:${port}${path}"
 
     curl --fail --silent --show-error --max-time 2 "$endpoint" |
-        "$ADMIN_JSON" "$operation" "$locator" "$owner" "$peer"
+        "$ADMIN_JSON" "$operation" "$owner" "$peer"
 }
 
 if [[ "$OSTYPE" == msys* || "$OSTYPE" == mingw* || "$OSTYPE" == cygwin* ]]; then
@@ -109,9 +124,9 @@ start_router() {
 }
 
 wait_for_id() {
-    local port="$1" locator="$2" zid="" attempt
+    local log="$1" zid="" attempt
     for attempt in $(seq 1 80); do
-        zid="$(admin_value "$port" id "$locator" "" "" 2>/dev/null || true)"
+        zid="$(sed -n 's/.*\[Routers Network\] Add node (self) //p' "$log" 2>/dev/null | head -n 1)"
         if [[ -n "$zid" ]]; then
             printf '%s' "$zid"
             return 0
@@ -124,7 +139,7 @@ wait_for_id() {
 wait_for_transport() {
     local port="$1" owner="$2" peer="$3" attempt result
     for attempt in $(seq 1 80); do
-        result="$(admin_value "$port" transport "" "$owner" "$peer" 2>/dev/null || true)"
+        result="$(admin_value "$port" "/@/${owner}/session/transport/unicast/${peer}" transport "$owner" "$peer" 2>/dev/null || true)"
         if [[ "$result" == yes ]]; then return 0; fi
         sleep 0.25
     done
@@ -132,18 +147,18 @@ wait_for_transport() {
 }
 
 start_router A "$A_REST"
-A_ID="$(wait_for_id "$A_REST" "$A_LOCATOR")" || { echo "Router A REST did not start" >&2; exit 1; }
+A_ID="$(wait_for_id "$TRIAL_DIR/A.log")" || { echo "Router A did not start" >&2; exit 1; }
 start_router B "$B_REST"
-B_ID="$(wait_for_id "$B_REST" "$B_LOCATOR")" || { echo "Router B REST did not start" >&2; exit 1; }
+B_ID="$(wait_for_id "$TRIAL_DIR/B.log")" || { echo "Router B did not start" >&2; exit 1; }
 wait_for_transport "$B_REST" "$B_ID" "$A_ID" || { echo "B did not establish A-B before C started" >&2; exit 1; }
 sleep 1
 start_router C "$C_REST"
-C_ID="$(wait_for_id "$C_REST" "$C_LOCATOR")" || { echo "Router C REST did not start" >&2; exit 1; }
+C_ID="$(wait_for_id "$TRIAL_DIR/C.log")" || { echo "Router C did not start" >&2; exit 1; }
 wait_for_transport "$C_REST" "$C_ID" "$A_ID" || { echo "C did not establish C-A" >&2; exit 1; }
 
 GRAPH="no"
 for attempt in $(seq 1 40); do
-    GRAPH="$(admin_value "$C_REST" graph "" "$C_ID" "$B_ID" 2>/dev/null || true)"
+    GRAPH="$(admin_value "$C_REST" "/@/${C_ID}/router/linkstate/north" graph "$C_ID" "$B_ID" 2>/dev/null || true)"
     [[ "$GRAPH" == yes ]] && break
     sleep 0.25
 done
@@ -152,26 +167,24 @@ if [[ "$GRAPH" != yes ]]; then
     exit 1
 fi
 
-admin_value "$C_REST" dump "" "" "" >"$TRIAL_DIR/C-adminspace.json"
+admin_value "$C_REST" "/@/${C_ID}/router/linkstate/north" dump "$C_ID" "" >"$TRIAL_DIR/C-linkstate.json"
 DIRECT="no"
 for attempt in $(seq 1 20); do
-    DIRECT="$(admin_value "$C_REST" transport "" "$C_ID" "$B_ID")"
+    DIRECT="$(admin_value "$C_REST" "/@/${C_ID}/session/transport/unicast/${B_ID}" transport "$C_ID" "$B_ID")"
     [[ "$DIRECT" == yes ]] && break
     sleep 0.25
 done
+admin_value "$C_REST" "/@/${C_ID}/session/transport/unicast/${B_ID}" dump "$C_ID" "$B_ID" >"$TRIAL_DIR/C-B-transport.json" || true
 if ! grep -Fq "Add node (reintroduced) $B_ID" "$TRIAL_DIR/C.log"; then
     echo "C did not log B's reintroduced placeholder; see $TRIAL_DIR/C.log" >&2
     exit 1
 fi
 
-if [[ "$VARIANT" == before && "$DIRECT" != no ]]; then
-    echo "Before: expected C not to autoconnect B, but direct transport exists." >&2
-    exit 1
-fi
 if [[ "$VARIANT" == after && "$DIRECT" != yes ]]; then
     echo "After: expected C to autoconnect B, but direct transport is absent." >&2
     exit 1
 fi
 
-echo "$VARIANT trial $TRIAL: graph_has_B=yes direct_C_B=$DIRECT"
+RESULT="$VARIANT trial $TRIAL: graph_has_B=yes placeholder_at_C=yes direct_C_B=$DIRECT A=$A_ID B=$B_ID C=$C_ID"
+echo "$RESULT" | tee "$TRIAL_DIR/result.txt"
 echo "  C trace: $TRIAL_DIR/C.log"

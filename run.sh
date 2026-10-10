@@ -83,9 +83,18 @@ echo "Building unmodified zenohd and REST plugin ..."
 build_daemon
 build_admin_json_helper
 find_artifacts
-for trial in 1 2 3 4 5; do
-    bash "$SCRIPT_DIR/process-repro.sh" before "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$trial" "$ADMIN_JSON"
+BASE_FAILURE_FOUND=no
+for trial in $(seq 1 10); do
+    RESULT="$(bash "$SCRIPT_DIR/process-repro.sh" before "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$trial" "$ADMIN_JSON")"
+    printf '%s\n' "$RESULT"
+    if [[ "$RESULT" == *"direct_C_B=no"* ]]; then
+        BASE_FAILURE_FOUND=yes
+        break
+    fi
 done
+if [[ "$BASE_FAILURE_FOUND" != yes ]]; then
+    echo "No unconnected baseline trial in 10 attempts; continuing with the fixed build for comparison."
+fi
 
 echo "Applying the one-line PR fix and rerunning ..."
 git -C "$ZENOH_DIR" apply "$SCRIPT_DIR/whatami-fix.patch"
@@ -103,4 +112,8 @@ find_artifacts
 for trial in 1 2 3 4 5; do
     bash "$SCRIPT_DIR/process-repro.sh" after "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$((trial + 10))" "$ADMIN_JSON"
 done
-echo "Both process variants passed. Before/after logs and Admin Space snapshots are in $RUN_DIR"
+if [[ "$BASE_FAILURE_FOUND" != yes ]]; then
+    echo "The deterministic regression test passed, but no unconnected baseline process trial was observed. See $RUN_DIR" >&2
+    exit 1
+fi
+echo "The unconnected baseline case and all fixed process trials were observed. Logs and Admin Space snapshots are in $RUN_DIR"
