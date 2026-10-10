@@ -1,22 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VARIANT="${1:?usage: process-repro.sh before|after ZENOH_BIN REST_PLUGIN RUN_DIR TRIAL}"
+VARIANT="${1:?usage: process-repro.sh before|after ZENOH_BIN REST_PLUGIN RUN_DIR TRIAL ADMIN_JSON}"
 ZENOH_BIN="${2:?missing zenohd binary}"
 REST_PLUGIN="${3:?missing REST plugin}"
 RUN_DIR="${4:?missing artifact directory}"
 TRIAL="${5:?missing trial number}"
+ADMIN_JSON="${6:?missing Admin Space JSON helper}"
 if [[ "$VARIANT" != before && "$VARIANT" != after ]]; then
     echo "Variant must be 'before' or 'after'." >&2
-    exit 2
-fi
-
-if command -v python3 >/dev/null 2>&1; then
-    PYTHON=python3
-elif command -v python >/dev/null 2>&1; then
-    PYTHON=python
-else
-    echo "Python 3 is required to read the Admin Space REST JSON." >&2
     exit 2
 fi
 
@@ -72,39 +64,11 @@ cat >"$TRIAL_DIR/C.json5" <<EOF
 EOF
 
 admin_value() {
-    "$PYTHON" - "$@" <<'PY'
-import json
-import sys
-from urllib.request import urlopen
+    local port="$1" operation="$2" locator="$3" owner="$4" peer="$5"
+    local endpoint="http://localhost:${port}/@/**"
 
-port, operation, locator, owner, peer = sys.argv[1:]
-with urlopen(f"http://localhost:{port}/@/**", timeout=2) as response:
-    rows = json.load(response)
-
-if operation == "id":
-    for row in rows:
-        if row.get("key", "").endswith("/router"):
-            value = row.get("value", {})
-            if locator in value.get("locators", []):
-                print(value["zid"])
-                raise SystemExit(0)
-    raise SystemExit(1)
-
-if operation == "transport":
-    key = f"@/{owner}/session/transport/unicast/{peer}"
-    print("yes" if any(row.get("key") == key for row in rows) else "no")
-elif operation == "graph":
-    key = f"@/{owner}/router/linkstate/north"
-    for row in rows:
-        if row.get("key") == key:
-            print("yes" if peer in str(row.get("value", "")) else "no")
-            raise SystemExit(0)
-    print("no")
-elif operation == "dump":
-    print(json.dumps(rows, indent=2))
-else:
-    raise SystemExit(f"unknown operation: {operation}")
-PY
+    curl --fail --silent --show-error --max-time 2 "$endpoint" |
+        "$ADMIN_JSON" "$operation" "$locator" "$owner" "$peer"
 }
 
 if [[ "$OSTYPE" == msys* || "$OSTYPE" == mingw* || "$OSTYPE" == cygwin* ]]; then

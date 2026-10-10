@@ -28,7 +28,7 @@ sequenceDiagram
 
 ## Run
 
-Requires Bash, Git, Rust/Cargo, and Python 3. The base Zenoh commit pins Rust 1.97.1 in `rust-toolchain.toml`.
+Requires Bash, Git, `curl`, and Rust/Cargo. The base Zenoh commit pins Rust 1.97.1 in `rust-toolchain.toml`; no Python, `jq`, or additional Rust crates are needed. The script builds a small JSON reader against Zenoh's existing `serde_json` dependency.
 
 ```bash
 bash ./run.sh

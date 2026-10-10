@@ -45,6 +45,19 @@ build_daemon() {
     (cd "$ZENOH_DIR" && cargo build --release -p zenohd -p zenoh-plugin-rest)
 }
 
+build_admin_json_helper() {
+    local example_dir="$ZENOH_DIR/zenoh/examples"
+    mkdir -p "$example_dir"
+    cp "$SCRIPT_DIR/adminspace-json.rs" "$example_dir/adminspace-json.rs"
+    (cd "$ZENOH_DIR" && cargo build --release -p zenoh --example adminspace-json)
+    ADMIN_JSON="$ZENOH_DIR/target/release/examples/adminspace-json"
+    if [[ -f "$ADMIN_JSON.exe" ]]; then ADMIN_JSON="$ADMIN_JSON.exe"; fi
+    if [[ ! -f "$ADMIN_JSON" ]]; then
+        echo "Could not find the built Admin Space JSON helper." >&2
+        exit 1
+    fi
+}
+
 find_artifacts() {
     ZENOH_BIN="$ZENOH_DIR/target/release/zenohd"
     REST_PLUGIN=""
@@ -68,9 +81,10 @@ find_artifacts() {
 
 echo "Building unmodified zenohd and REST plugin ..."
 build_daemon
+build_admin_json_helper
 find_artifacts
 for trial in 1 2 3 4 5; do
-    bash "$SCRIPT_DIR/process-repro.sh" before "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$trial"
+    bash "$SCRIPT_DIR/process-repro.sh" before "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$trial" "$ADMIN_JSON"
 done
 
 echo "Applying the one-line PR fix and rerunning ..."
@@ -87,6 +101,6 @@ echo "Building fixed zenohd and REST plugin ..."
 build_daemon
 find_artifacts
 for trial in 1 2 3 4 5; do
-    bash "$SCRIPT_DIR/process-repro.sh" after "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$((trial + 10))"
+    bash "$SCRIPT_DIR/process-repro.sh" after "$ZENOH_BIN" "$REST_PLUGIN" "$RUN_DIR" "$((trial + 10))" "$ADMIN_JSON"
 done
 echo "Both process variants passed. Before/after logs and Admin Space snapshots are in $RUN_DIR"
