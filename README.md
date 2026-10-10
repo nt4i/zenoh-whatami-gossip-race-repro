@@ -46,16 +46,16 @@ The script runs two checks: an internal regression test, then a three-process ch
 
 ### 1. Regression test
 
-The [test](regression-test.patch#L11) feeds four events to `Network::link_states()`. Each row links to the test input or assertion.
+The regression test feeds four events to `Network::link_states()`. Each row links to the corresponding production code on Zenoh's `main` branch. The test assertions themselves are added by [`regression-test.patch`](regression-test.patch).
 
 | Step | Event | Before PR #2827 | With PR #2827 |
 | --- | --- | --- | --- |
-| 1 | [Register B's per-link ID mapping](regression-test.patch#L36) | Mapping is stored; B's detached graph node is removed | Same |
-| 2 | [A announces its link to B](regression-test.patch#L51); C [asserts B has no role and `sn=0`](regression-test.patch#L65) | `whatami=None`, `sn=0` | Same |
-| 3 | [B announces itself with `sn=2` and `Router`](regression-test.patch#L69) | Existing B gets `sn=2` and its link to A, but `whatami` stays `None` | Existing B also gets `whatami=Some(Router)` |
-| 4 | [Assert B's role](regression-test.patch#L85) | Fails: expected `Some(Router)`, got `None` | Passes: role is `Some(Router)` |
+| 1 | [Register B's per-link ID mapping](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L452-L459) | Mapping is stored; B's detached graph node is removed | Same |
+| 2 | [A announces its link to B](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L717-L739) | C re-adds B with `whatami=None`, `sn=0` | Same |
+| 3 | [B's announcement is decoded](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L461-L469) and handled by the [existing-node update branch](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L679-L699) | B gets `sn=2` and its link to A, but `whatami` stays `None` | B also gets `whatami=Some(Router)` |
+| 4 | [Autoconnect checks the node role](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L762-L771) | `None` skips the connection attempt | `Some(Router)` allows the role check to proceed |
 
-The test reads `net.graph[b_idx].whatami` directly.
+The regression test reads `net.graph[b_idx].whatami` directly; its assertions are in the test patch linked above.
 
 ### 2. Process check
 
