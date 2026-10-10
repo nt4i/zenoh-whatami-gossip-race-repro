@@ -20,7 +20,7 @@ git -C "$ZENOH_DIR" apply "$SCRIPT_DIR/regression-test.patch"
 
 TEST_ARGS=(
     test -p zenoh --features test --lib
-    net::protocol::network::tests::test_reintroduced_node_role_is_filled_by_its_own_linkstate
+    net::protocol::network::tests::test_node_added_from_neighbor_links_gets_own_role
     -- --exact --nocapture
 )
 
