@@ -14,7 +14,7 @@ sequenceDiagram
     Note over A,B: A-B session is established
     C->>A: Connect
     A-->>C: Initial link-state list [A, B]
-    Note right of C: Process A first; A.links contains B
+    Note right of C: Process A first, A.links contains B
     C->>C: Create B placeholder (whatami=None, sn=0)
     Note right of C: Then process B's own self-announcement
     alt Base commit
