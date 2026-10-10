@@ -28,13 +28,13 @@ sequenceDiagram
 
 ## Run
 
-Requires Bash, Git, Rust/Cargo (default toolchain: 1.97.1), and Python 3.
+Requires Bash, Git, Rust/Cargo, and Python 3. The base Zenoh commit pins Rust 1.97.1 in `rust-toolchain.toml`.
 
 ```bash
 bash ./run.sh
 ```
 
-Use `TOOLCHAIN=stable bash ./run.sh` to select another installed Rust toolchain. The script builds Zenoh at the base commit and with the PR #2827 change, runs the regression test, and attempts up to five process trials per version. Logs and Admin Space snapshots are saved under `.work/`.
+The script uses Zenoh's pinned toolchain to build the base and PR #2827 versions, runs the regression test, and attempts up to five process trials per version. Logs and Admin Space snapshots are saved under `.work/`.
 
 The process-level trigger is timing-dependent: an individual trial may miss the required message order, causing the script to stop early. Rerun `bash ./run.sh` if that happens.
 
