@@ -16,7 +16,7 @@ sequenceDiagram
     A-->>C: Initial link-state list [A, B]
     Note right of C: Process A first, A.links contains B
     C->>C: Create B placeholder (whatami=None, sn=0)
-    Note right of C: Then process B's own self-announcement
+    Note right of C: Then process B's entry from A's list (its self-announcement)
     alt Base commit
         C->>C: Existing-node update leaves whatami unset
         Note right of C: Autoconnect skips B
