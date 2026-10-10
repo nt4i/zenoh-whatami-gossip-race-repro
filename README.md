@@ -42,7 +42,11 @@ The script builds Zenoh at the base commit and with the PR #2827 role-assignment
 
 ## Expected result
 
-The [regression test](regression-test.patch#L11) feeds these four events to `Network::link_states()` in order:
+The script runs two checks: an internal regression test, then a three-process check.
+
+### 1. Regression test
+
+The [test](regression-test.patch#L11) feeds four events to `Network::link_states()`:
 
 | Step | Event | Before PR #2827 | With PR #2827 |
 | --- | --- | --- | --- |
@@ -51,12 +55,8 @@ The [regression test](regression-test.patch#L11) feeds these four events to `Net
 | 3 | B announces itself with `sn=2`, `whatami=Router` | Existing B gets `sn=2` and its link to A, but `whatami` stays `None` | Existing B also gets `whatami=Some(Router)` |
 | 4 | Test checks B's role | Fails: expected `Some(Router)`, got `None` | Passes: role is `Some(Router)` |
 
-The test reads `net.graph[b_idx].whatami` directly. The real-process checks are separate: they inspect C's graph, reintroduction log, and direct B–C transport as listed below.
+The test reads `net.graph[b_idx].whatami` directly.
 
-| Process output | What it checks | Where it comes from |
-| --- | --- | --- |
-| `graph_has_B=yes` | C's Admin Space link-state graph contains B | [`process-repro.sh`](process-repro.sh#L159) |
-| `B_reintroduced_at_C=yes` | C logged B's reintroduction from A's link map | [`process-repro.sh`](process-repro.sh#L178) |
-| `direct_C_B=no` / `yes` | Whether C has a direct B transport, queried through Admin Space | [`process-repro.sh`](process-repro.sh#L173) |
+### 2. Process check
 
-The process check does not expose B's internal `whatami`; that value is checked by the regression test above. On the base build, [`run.sh`](run.sh#L87) tries up to ten times to find a `direct_C_B=no` case. If B has the greater ID, its connection attempt can mask C's bug. With PR #2827, all five process trials must report `direct_C_B=yes`. Each trial's `result.txt`, `C.log`, and Admin Space snapshots are saved under `.work/`.
+[`process-repro.sh`](process-repro.sh#L159) confirms `graph_has_B=yes` and `B_reintroduced_at_C=yes`, then checks the direct B–C transport. The base build tries up to ten times to find `direct_C_B=no`; with PR #2827, all five trials must report `direct_C_B=yes`. Admin Space does not expose `whatami`, so only the regression test checks that internal value. Trial output and snapshots are saved under `.work/`.
