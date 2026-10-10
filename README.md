@@ -38,13 +38,13 @@ Requires Bash and Rust/Cargo 1.97.1 (pinned by Zenoh).
 bash ./run.sh
 ```
 
-The script builds Zenoh at the base commit and with the PR #2827 role-assignment change, runs the regression test, and runs up to ten base process trials to find the no-connection case. It then runs five process trials with the PR change. Logs and Admin Space snapshots are saved under `.work/`.
+The script builds Zenoh at the base commit and with the PR #2827 role-assignment change, runs the link-state role-assignment test, and runs up to ten base process trials to find the no-connection case. It then runs five process trials with the PR change. Logs and Admin Space snapshots are saved under `.work/`.
 
 ## Expected result
 
-The script runs two checks: an internal regression test, then a three-process check.
+The script runs two checks: an internal link-state role-assignment test, then a three-process check.
 
-### 1. Regression test
+### 1. Link-state role-assignment test
 
 The test code is in [`regression-test.patch` lines 11–85](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L11-L85). It reproduces the two updates C receives in the scenario: A's link state listing B, followed by B's own link state relayed through A. The test passes these updates directly to C's network state and checks B's stored role; it does not start `zenohd` processes.
 
@@ -67,4 +67,4 @@ The process check below separately checks whether C establishes a direct B–C t
 2. Checks C's log to confirm A's link map caused C to add B: `B_added_from_A_links_at_C=yes` ([check](process-repro.sh#L178)).
 3. Queries C's Admin Space for a direct B–C transport: `direct_C_B=no` or `yes` ([query](process-repro.sh#L173)).
 
-Before PR #2827, the reproduced failure is `graph_has_B=yes B_added_from_A_links_at_C=yes direct_C_B=no`. `run.sh` repeats the base-commit check up to ten times to find a run where C has the greater ID: C skips connecting to B, and B cannot initiate the connection. With the PR #2827 change, all five trials must report `direct_C_B=yes`. These process checks do not expose `whatami`; the regression test above reads that field directly. Each trial saves its result, logs, and Admin Space snapshots under `.work/` ([snapshots](process-repro.sh#L170), [result](process-repro.sh#L188)).
+Before PR #2827, the reproduced failure is `graph_has_B=yes B_added_from_A_links_at_C=yes direct_C_B=no`. `run.sh` repeats the base-commit check up to ten times to find a run where C has the greater ID: C skips connecting to B, and B cannot initiate the connection. With the PR #2827 change, all five trials must report `direct_C_B=yes`. These process checks do not expose `whatami`; the link-state role-assignment test above reads that field directly. Each trial saves its result, logs, and Admin Space snapshots under `.work/` ([snapshots](process-repro.sh#L170), [result](process-repro.sh#L188)).
