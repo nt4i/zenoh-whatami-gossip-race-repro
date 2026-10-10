@@ -1,6 +1,6 @@
 # Zenoh `whatami` regression reproducer
 
-This reproduces the missing node-role assignment addressed by [zenoh#2827](https://github.com/eclipse-zenoh/zenoh/pull/2827), using three real `zenohd` processes.
+This reproduces the missing node-role assignment addressed by eclipse-zenoh/zenoh/pull/2827.
 
 All three routers have gossip autoconnect enabled for routers and use `autoconnect_strategy: "greater-zid"`. B and C are configured to connect to A. No B–C connection is configured. `greater-zid` allows only the router with the greater Zenoh ID to initiate the automatic connection.
 
