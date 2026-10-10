@@ -48,7 +48,7 @@ The script runs two checks: an internal regression test, then a three-process ch
 
 The test code is in [`regression-test.patch` lines 11–85](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L11-L85). It reproduces the two updates C receives in the scenario: A's link state listing B, followed by B's own link state relayed through A. The test passes these updates directly to C's network state and checks B's stored role; it does not start `zenohd` processes.
 
-1. C first learns that link ID `1` refers to B. A's next update lists link `1` as a neighbor, so C learns B is connected to A but gets no role information for B. C stores B with `whatami=None` and `sn=0`; the test checks these values at [lines 66–67](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L66-L67).
+1. A's update tells C that A is connected to B, but gives no role for B. The test checks that C records B with `whatami=None` and `sn=0` at [lines 66–67](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L66-L67).
 2. The test sends B's own update with `whatami=Router` and `sn=2` at [lines 70–82](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L70-L82).
 3. It reads `net.graph[b_idx].whatami` and expects `Some(Router)` at [line 85](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L85).
 
