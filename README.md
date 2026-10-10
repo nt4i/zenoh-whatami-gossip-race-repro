@@ -34,7 +34,7 @@ Requires Bash and Rust/Cargo 1.97.1 (pinned by Zenoh).
 bash ./run.sh
 ```
 
-The script builds and tests both versions, then attempts up to five process trials per version. Logs and Admin Space snapshots are saved under `.work/`.
+The script builds the base Zenoh commit and a second build with PR #2827's role-assignment change applied, then runs the regression test and up to five process trials for each. Logs and Admin Space snapshots are saved under `.work/`.
 
 Process trials are timing-dependent. If a trial misses the required message order, rerun `bash ./run.sh`.
 
