@@ -28,7 +28,7 @@ sequenceDiagram
 
 ## Run
 
-Requires Bash, Git, and Rust/Cargo 1.97.1 (pinned by Zenoh).
+Requires Bash and Rust/Cargo 1.97.1 (pinned by Zenoh).
 
 ```bash
 bash ./run.sh
