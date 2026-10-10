@@ -36,8 +36,6 @@ bash ./run.sh
 
 The script builds the base Zenoh commit and a second build with PR #2827's role-assignment change applied, then runs the regression test and up to five process trials for each. Logs and Admin Space snapshots are saved under `.work/`.
 
-Process trials are timing-dependent. If a trial misses the required message order, rerun `bash ./run.sh`.
-
 ## Expected result
 
 | Version | Process result | Regression test |
