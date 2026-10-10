@@ -4,6 +4,28 @@ This reproduces the missing node-role assignment addressed by the role-assignmen
 
 Three real `zenohd` processes create the triggering order: A starts, B connects to A, then C connects to A. C learns about B from A's link map before receiving B's own link state. Without the PR #2827 change, C leaves B's `whatami` unset and does not autoconnect; with the role-assignment change, C learns B's role and establishes a direct connection.
 
+```mermaid
+sequenceDiagram
+    participant A as Router A
+    participant B as Router B
+    participant C as Router C
+
+    B->>A: Connect
+    Note over A,B: A-B session is established
+    C->>A: Connect
+    A-->>C: Initial link-state list [A, B]
+    Note right of C: Process A first; A.links contains B
+    C->>C: Create B placeholder (whatami=None, sn=0)
+    Note right of C: Then process B's own self-announcement
+    alt Base commit
+        C->>C: Existing-node update leaves whatami unset
+        Note right of C: Autoconnect skips B
+    else With PR #2827 change
+        C->>C: Assign B.whatami = Router
+        C->>B: Autoconnect (direct C-B)
+    end
+```
+
 ## Run
 
 Requires Bash, Git, Rust/Cargo (default toolchain: 1.97.1), and Python 3.
