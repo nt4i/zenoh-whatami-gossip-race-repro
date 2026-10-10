@@ -19,7 +19,7 @@ sequenceDiagram
     C->>C: Process B's newer self-announcement
     alt Base commit, C has the greater ID
         C->>C: whatami stays None, so C skips B
-        Note over B,C: B is not allowed to initiate; no direct B–C transport
+        Note over B,C: B is not allowed to initiate, so there is no direct B–C transport
     else Base commit, B has the greater ID
         B->>C: Autoconnect succeeds and masks C's skipped attempt
     else With PR #2827 change
