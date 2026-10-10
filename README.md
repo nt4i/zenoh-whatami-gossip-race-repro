@@ -12,7 +12,9 @@ Requires Bash, Git, Rust/Cargo (default toolchain: 1.97.1), and Python 3.
 bash ./run.sh
 ```
 
-Use `TOOLCHAIN=stable bash ./run.sh` to select another installed Rust toolchain. The script builds the base and fixed versions, runs the regression test, and performs five process trials for each version. Logs and Admin Space snapshots are saved under `.work/`.
+Use `TOOLCHAIN=stable bash ./run.sh` to select another installed Rust toolchain. The script builds the base and fixed versions, runs the regression test, and attempts up to five process trials per version. Logs and Admin Space snapshots are saved under `.work/`.
+
+The process-level trigger is timing-dependent: an individual trial may miss the required message order, causing the script to stop early. Rerun `bash ./run.sh` if that happens.
 
 ## Expected result
 
