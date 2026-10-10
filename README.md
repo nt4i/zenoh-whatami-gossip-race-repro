@@ -46,7 +46,7 @@ The script runs two checks: an internal regression test, then a three-process ch
 
 ### 1. Regression test
 
-The test code is in [`regression-test.patch` on `main`](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L11-L85). It feeds updates to C and reads B's role from C's graph; it does not start processes.
+The test code is in [`regression-test.patch` lines 11–85](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L11-L85). It feeds updates to C and reads B's role from C's graph; it does not start processes.
 
 1. The test registers B's link ID, then sends A's update listing B. C records B as `whatami=None`, `sn=0`; the test checks this at [lines 66–67](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L66-L67).
 2. The test sends B's own update with `whatami=Router` and `sn=2` at [lines 70–82](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L70-L82).
