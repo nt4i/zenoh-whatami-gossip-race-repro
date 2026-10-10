@@ -46,9 +46,9 @@ The script runs two checks: an internal regression test, then a three-process ch
 
 ### 1. Regression test
 
-The test sends two updates to C and then reads B's role directly from C's network graph. It calls `Network::link_states()`; it does not start processes.
+The test first registers B's link ID with C, then sends two link-state updates to C. It reads B's role directly from C's network graph; no processes are started.
 
-1. A's link state lists B. C adds B with no known role: `whatami=None`, `sn=0`. [The test checks these starting values](regression-test.patch#L66-L67); [this is where Zenoh adds B from A's link map](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L717-L739).
+1. A's update lists B as a neighbor. C adds B without knowing its role: `whatami=None`, `sn=0`. [The test checks these starting values](regression-test.patch#L66-L67); [Zenoh adds B from A's link map here](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L717-L739).
 2. B's own link state says its role is `Router` and its sequence number is `2`. C processes it in the [existing-node update branch](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L679-L699).
 3. The test reads `net.graph[b_idx].whatami` and expects `Some(Router)` ([assertion](regression-test.patch#L85)).
 
