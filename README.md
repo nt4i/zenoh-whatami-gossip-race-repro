@@ -45,4 +45,4 @@ The process-level trigger is timing-dependent: an individual trial may miss the 
 | Base commit | `graph_has_B=yes direct_C_B=no` | Fails: role is `None` instead of `Some(Router)` |
 | With PR #2827 change | `graph_has_B=yes direct_C_B=yes` | Passes |
 
-The Admin Space snapshot shows the direct C–B transport with the PR #2827 change applied. It does not expose the internal `whatami` field; the regression test checks the placeholder (`None`, `sn: 0`) and the role update directly. B's autoconnect is disabled so it cannot mask C's skipped connection attempt.
+The Admin Space snapshot shows the direct C–B transport with the PR #2827 change applied, but it does not expose the internal `whatami` field. The regression test reads `net.graph[b_idx].whatami` directly: it checks `None` with `sn: 0` after placeholder creation, then `Some(Router)` after B's own announcement. B's autoconnect is disabled so it cannot mask C's skipped connection attempt.
