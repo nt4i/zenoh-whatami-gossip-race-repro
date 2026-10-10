@@ -28,15 +28,15 @@ sequenceDiagram
 
 ## Run
 
-Requires Bash, Git, `curl`, and Rust/Cargo. The base Zenoh commit pins Rust 1.97.1 in `rust-toolchain.toml`; no Python, `jq`, or additional Rust crates are needed. The script builds a small JSON reader against Zenoh's existing `serde_json` dependency.
+Requires Bash, Git, `curl`, and Rust/Cargo 1.97.1 (pinned by Zenoh).
 
 ```bash
 bash ./run.sh
 ```
 
-The script uses Zenoh's pinned toolchain to build the base and PR #2827 versions, runs the regression test, and attempts up to five process trials per version. Logs and Admin Space snapshots are saved under `.work/`.
+The script builds and tests both versions, then attempts up to five process trials per version. Logs and Admin Space snapshots are saved under `.work/`.
 
-The process-level trigger is timing-dependent: an individual trial may miss the required message order, causing the script to stop early. Rerun `bash ./run.sh` if that happens.
+Process trials are timing-dependent. If a trial misses the required message order, rerun `bash ./run.sh`.
 
 ## Expected result
 
