@@ -8,7 +8,7 @@ index 80204f0e..447e859a 100644
      }
 +
 +    #[test]
-+    fn test_reintroduced_node_role_is_filled_by_its_own_linkstate() {
++    fn test_node_added_from_neighbor_links_gets_own_role() {
 +        use zenoh_transport::unicast::test_helpers::mock_transport_unicast;
 +
 +        let c_zid = "c".parse::<ZenohIdProto>().unwrap();
@@ -48,7 +48,7 @@ index 80204f0e..447e859a 100644
 +            a_zid,
 +        );
 +
-+        // A's links map reintroduces B without a role or link-state sequence number.
++        // A's links map adds B to C's graph without a role or link-state sequence number.
 +        net.link_states(
 +            vec![LinkState {
 +                psid: 0,
@@ -62,11 +62,11 @@ index 80204f0e..447e859a 100644
 +            }],
 +            a_zid,
 +        );
-+        let b_idx = net.get_idx(&b_zid).expect("A's links should reintroduce B");
++        let b_idx = net.get_idx(&b_zid).expect("A's links should add B to C's graph");
 +        assert_eq!(net.graph[b_idx].whatami, None);
 +        assert_eq!(net.graph[b_idx].sn, 0);
 +
-+        // B's own newer announcement updates the reintroduced node.
++        // B's own newer announcement updates the node added from A's links.
 +        net.link_states(
 +            vec![LinkState {
 +                psid: 1,
