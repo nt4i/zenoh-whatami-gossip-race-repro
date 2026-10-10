@@ -15,7 +15,7 @@ sequenceDiagram
     C->>A: Connect
     A-->>B: C's role-bearing state, then A's updated link state
     A-->>C: A's link state (which lists B), then B's own state
-    C->>C: A's links add B to C's graph (whatami=None, sn=0)A baseline reproduction
+    C->>C: A's links add B to C's graph (whatami=None, sn=0)
     C->>C: Process B's newer self-announcement
     alt Base commit, C has the greater ID
         C->>C: whatami stays None, so C skips B
