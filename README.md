@@ -2,7 +2,7 @@
 
 This reproduces the missing node-role assignment addressed by [zenoh#2827](https://github.com/eclipse-zenoh/zenoh/pull/2827), using three real `zenohd` processes.
 
-All three routers have gossip autoconnect enabled for routers and use `autoconnect_strategy: "greater-zid"`. B and C connect only to A through their configured `connect` endpoint; there is no configured B–C connection. `greater-zid` allows only the router with the greater Zenoh ID to initiate the automatic connection.
+All three routers have gossip autoconnect enabled for routers and use `autoconnect_strategy: "greater-zid"`. B and C are configured to connect to A. No B–C connection is configured. `greater-zid` allows only the router with the greater Zenoh ID to initiate the automatic connection.
 
 ```mermaid
 sequenceDiagram
