@@ -42,7 +42,7 @@ The script builds Zenoh at the base commit and with the PR #2827 role-assignment
 
 ## Expected result
 
-The script runs two checks: an internal link-state role-assignment test, then a three-process check.
+The script runs two checks: an internal link-state role-assignment test, then a three-router autoconnect test.
 
 ### 1. Link-state role-assignment test
 
@@ -57,9 +57,9 @@ The test code is in [`regression-test.patch` lines 11–85](https://github.com/n
 | Base commit | `None` (expected `Some(Router)`) | Fails: the values differ. |
 | With PR #2827 | `Some(Router)` | Passes: the values match. |
 
-The process check below separately checks whether C establishes a direct B–C transport.
+The three-router autoconnect test below separately checks whether C establishes a direct B–C transport.
 
-### 2. Process check
+### 2. Three-router autoconnect test
 
 [`process-repro.sh`](process-repro.sh#L149) starts A, connects B to A, then connects C to A; it waits for both A–B and A–C transports before checking the result. It then:
 
@@ -67,4 +67,4 @@ The process check below separately checks whether C establishes a direct B–C t
 2. Checks C's log to confirm A's link map caused C to add B: `B_added_from_A_links_at_C=yes` ([check](process-repro.sh#L178)).
 3. Queries C's Admin Space for a direct B–C transport: `direct_C_B=no` or `yes` ([query](process-repro.sh#L173)).
 
-Before PR #2827, the reproduced failure is `graph_has_B=yes B_added_from_A_links_at_C=yes direct_C_B=no`. `run.sh` repeats the base-commit check up to ten times to find a run where C has the greater ID: C skips connecting to B, and B cannot initiate the connection. With the PR #2827 change, all five trials must report `direct_C_B=yes`. These process checks do not expose `whatami`; the link-state role-assignment test above reads that field directly. Each trial saves its result, logs, and Admin Space snapshots under `.work/` ([snapshots](process-repro.sh#L170), [result](process-repro.sh#L188)).
+Before PR #2827, the reproduced failure is `graph_has_B=yes B_added_from_A_links_at_C=yes direct_C_B=no`. `run.sh` repeats the base-commit check up to ten times to find a run where C has the greater ID: C skips connecting to B, and B cannot initiate the connection. With the PR #2827 change, all five trials must report `direct_C_B=yes`. These three-router autoconnect tests do not expose `whatami`; the link-state role-assignment test above reads that field directly. Each trial saves its result, logs, and Admin Space snapshots under `.work/` ([snapshots](process-repro.sh#L170), [result](process-repro.sh#L188)).
