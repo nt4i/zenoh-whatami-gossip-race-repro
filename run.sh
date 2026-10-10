@@ -4,7 +4,6 @@ set -euo pipefail
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 BASE_COMMIT="173b1220c2ab59cc22c82bfc6c95ac9971ff213b"
 REPO_URL="https://github.com/eclipse-zenoh/zenoh.git"
-TOOLCHAIN="${TOOLCHAIN:-1.97.1}"
 WORK_ROOT="$SCRIPT_DIR/.work"
 mkdir -p "$WORK_ROOT"
 RUN_DIR="$(mktemp -d "$WORK_ROOT/run.XXXXXXXX")"
@@ -20,7 +19,7 @@ echo "Adding the deterministic regression test ..."
 git -C "$ZENOH_DIR" apply "$SCRIPT_DIR/regression-test.patch"
 
 TEST_ARGS=(
-    "+$TOOLCHAIN" test -p zenoh --features test --lib
+    test -p zenoh --features test --lib
     net::protocol::network::tests::test_reintroduced_node_role_is_filled_by_its_own_linkstate
     -- --exact --nocapture
 )
@@ -43,7 +42,7 @@ fi
 echo "Confirmed: baseline leaves whatami as None. Log: $BEFORE_LOG"
 
 build_daemon() {
-    (cd "$ZENOH_DIR" && cargo "+$TOOLCHAIN" build --release -p zenohd -p zenoh-plugin-rest)
+    (cd "$ZENOH_DIR" && cargo build --release -p zenohd -p zenoh-plugin-rest)
 }
 
 find_artifacts() {
