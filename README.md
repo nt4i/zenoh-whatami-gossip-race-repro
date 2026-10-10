@@ -46,19 +46,18 @@ The script runs two checks: an internal regression test, then a three-process ch
 
 ### 1. Regression test
 
-The test calls `Network::link_states()` directly; it does not start processes. It first makes C add B from A's link map, then sends B's own newer link state.
+The test sends two updates to C and then reads B's role directly from C's network graph. It calls `Network::link_states()`; it does not start processes.
 
-- **Setup:** C initially records B as `whatami=None`, `sn=0`. The test checks these values in [`regression-test.patch`](regression-test.patch#L66-L67); production code adds B from A's link map [here](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L717-L739).
-- **Final check:** after B's own state (`sn=2`, link to A) is processed by the [existing-node update branch](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L679-L699), the test compares `net.graph[b_idx].whatami` with `Some(Router)` in [`regression-test.patch`](regression-test.patch#L85).
+1. A's link state lists B. C adds B with no known role: `whatami=None`, `sn=0`. [The test checks these starting values](regression-test.patch#L66-L67); [this is where Zenoh adds B from A's link map](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L717-L739).
+2. B's own link state says its role is `Router` and its sequence number is `2`. C processes it in the [existing-node update branch](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L679-L699).
+3. The test reads `net.graph[b_idx].whatami` and expects `Some(Router)` ([assertion](regression-test.patch#L85)).
 
-The final assertion produces these results:
-
-| Build | Test output | Meaning |
+| Build | Value read by the test | Result |
 | --- | --- | --- |
-| Base commit | `left: None`, `right: Some(Router)`; `test result: FAILED. 0 passed; 1 failed` | B's role stayed unset, so the final assertion fails. |
-| With PR #2827 | `test ... ok`; `test result: ok. 1 passed; 0 failed` | B's role is `Some(Router)`, so the same assertion passes. |
+| Base commit | `None` (expected `Some(Router)`) | Fails: the assertion does not match. |
+| With PR #2827 | `Some(Router)` | Passes: the assertion matches. |
 
-The process check below separately verifies whether this missing role prevents a direct B–C transport.
+The process check below separately checks whether C establishes a direct B–C transport.
 
 ### 2. Process check
 
