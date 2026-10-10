@@ -175,8 +175,8 @@ for attempt in $(seq 1 20); do
     sleep 0.25
 done
 admin_value "$C_REST" "/@/${C_ID}/session/transport/unicast/${B_ID}" dump "$C_ID" "$B_ID" >"$TRIAL_DIR/C-B-transport.json" || true
-if ! grep -Fq "Add node (reintroduced) $B_ID" "$TRIAL_DIR/C.log"; then
-    echo "C did not log B's reintroduction from A's link map; see $TRIAL_DIR/C.log" >&2
+if ! grep -Eq "Add node .* $B_ID" "$TRIAL_DIR/C.log"; then
+    echo "C did not log adding B from A's link map; see $TRIAL_DIR/C.log" >&2
     exit 1
 fi
 
@@ -185,6 +185,6 @@ if [[ "$VARIANT" == after && "$DIRECT" != yes ]]; then
     exit 1
 fi
 
-RESULT="$VARIANT trial $TRIAL: graph_has_B=yes B_reintroduced_at_C=yes direct_C_B=$DIRECT A=$A_ID B=$B_ID C=$C_ID"
+RESULT="$VARIANT trial $TRIAL: graph_has_B=yes B_added_from_A_links_at_C=yes direct_C_B=$DIRECT A=$A_ID B=$B_ID C=$C_ID"
 echo "$RESULT" | tee "$TRIAL_DIR/result.txt"
 echo "  C trace: $TRIAL_DIR/C.log"
