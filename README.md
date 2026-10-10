@@ -42,7 +42,16 @@ The script builds Zenoh at the base commit and with the PR #2827 role-assignment
 
 ## Expected result
 
-The [regression test](regression-test.patch#L11) reads `net.graph[b_idx].whatami` directly. It asserts that A's link map creates B as a placeholder (`None`, `sn: 0`), then that B's own announcement sets `Some(Router)`. The base build fails the final assertion; the build with PR #2827 passes.
+The [regression test](regression-test.patch#L11) feeds these four events to `Network::link_states()` in order:
+
+| Step | Event | Before PR #2827 | With PR #2827 |
+| --- | --- | --- | --- |
+| 1 | Learn B's per-link ID mapping from A | Mapping is stored; B's detached graph node is removed | Same |
+| 2 | A announces a link to B | C creates B's placeholder: `whatami=None`, `sn=0` | Same |
+| 3 | B announces itself with `sn=2`, `whatami=Router` | Existing B gets `sn=2` and its link to A, but `whatami` stays `None` | Existing B also gets `whatami=Some(Router)` |
+| 4 | Test checks B's role | Fails: expected `Some(Router)`, got `None` | Passes: role is `Some(Router)` |
+
+The test reads `net.graph[b_idx].whatami` directly. The real-process checks are separate: they inspect C's graph, placeholder log, and direct B–C transport as listed below.
 
 | Process output | What it checks | Where it comes from |
 | --- | --- | --- |
