@@ -46,16 +46,19 @@ The script runs two checks: an internal regression test, then a three-process ch
 
 ### 1. Regression test
 
-The regression test feeds four events to `Network::link_states()`. Each row links to the corresponding production code on Zenoh's `main` branch. The test assertions themselves are added by [`regression-test.patch`](regression-test.patch).
+The test calls `Network::link_states()` directly; it does not start processes. It first makes C add B from A's link map, then sends B's own newer link state.
 
-| Step | Event | Before PR #2827 | With PR #2827 |
-| --- | --- | --- | --- |
-| 1 | [Register B's per-link ID mapping](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L452-L459) | Mapping is stored; B's detached graph node is removed | Same |
-| 2 | [A announces its link to B](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L717-L739) | C re-adds B with `whatami=None`, `sn=0` | Same |
-| 3 | [B's announcement is decoded](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L461-L469) and handled by the [existing-node update branch](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L679-L699) | B gets `sn=2` and its link to A, but `whatami` stays `None` | B also gets `whatami=Some(Router)` |
-| 4 | [Autoconnect checks the node role](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L762-L771) | `None` skips the connection attempt | `Some(Router)` allows the role check to proceed |
+- **Setup:** C initially records B as `whatami=None`, `sn=0`. The test checks these values in [`regression-test.patch`](regression-test.patch#L66-L67); production code adds B from A's link map [here](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L717-L739).
+- **Final check:** after B's own state (`sn=2`, link to A) is processed by the [existing-node update branch](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L679-L699), the test compares `net.graph[b_idx].whatami` with `Some(Router)` in [`regression-test.patch`](regression-test.patch#L85).
 
-The regression test reads `net.graph[b_idx].whatami` directly; its assertions are in the test patch linked above.
+The final assertion produces these results:
+
+| Build | Test output | Meaning |
+| --- | --- | --- |
+| Base commit | `left: None`, `right: Some(Router)`; `test result: FAILED. 0 passed; 1 failed` | B's role stayed unset, so the final assertion fails. |
+| With PR #2827 | `test ... ok`; `test result: ok. 1 passed; 0 failed` | B's role is `Some(Router)`, so the same assertion passes. |
+
+The process check below separately verifies whether this missing role prevents a direct B–C transport.
 
 ### 2. Process check
 
