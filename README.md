@@ -46,16 +46,16 @@ The script runs two checks: an internal regression test, then a three-process ch
 
 ### 1. Regression test
 
-The test first registers B's link ID with C, then sends two link-state updates to C. It reads B's role directly from C's network graph; no processes are started.
+The test code is in [`regression-test.patch` on `main`](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L11-L85). It feeds updates to C and reads B's role from C's graph; it does not start processes.
 
-1. A's update lists B as a neighbor. C adds B without knowing its role: `whatami=None`, `sn=0`. [The test checks these starting values](regression-test.patch#L66-L67); [Zenoh adds B from A's link map here](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L717-L739).
-2. B's own link state says its role is `Router` and its sequence number is `2`. C processes it in the [existing-node update branch](https://github.com/eclipse-zenoh/zenoh/blob/main/zenoh/src/net/protocol/network.rs#L679-L699).
-3. The test reads `net.graph[b_idx].whatami` and expects `Some(Router)` ([assertion](regression-test.patch#L85)).
+1. The test registers B's link ID, then sends A's update listing B. C records B as `whatami=None`, `sn=0`; the test checks this at [lines 66–67](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L66-L67).
+2. The test sends B's own update with `whatami=Router` and `sn=2` at [lines 70–82](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L70-L82).
+3. It reads `net.graph[b_idx].whatami` and expects `Some(Router)` at [line 85](https://github.com/nt4i/zenoh-whatami-gossip-race-repro/blob/main/regression-test.patch#L85).
 
 | Build | Value read by the test | Result |
 | --- | --- | --- |
-| Base commit | `None` (expected `Some(Router)`) | Fails: the assertion does not match. |
-| With PR #2827 | `Some(Router)` | Passes: the assertion matches. |
+| Base commit | `None` (expected `Some(Router)`) | Fails: the values differ. |
+| With PR #2827 | `Some(Router)` | Passes: the values match. |
 
 The process check below separately checks whether C establishes a direct B–C transport.
 
