@@ -1,4 +1,4 @@
-# Zenoh `whatami` regression reproducer
+# Zenoh router autoconnect failure reproducer
 
 This reproduces the missing node-role assignment addressed by eclipse-zenoh/zenoh/pull/2827.
 
